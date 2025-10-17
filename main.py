@@ -1,6 +1,15 @@
 import discord
 import os
 from keep_alive import keep_alive
+from discord import app_commands
+from discord.ext import commands, tasks
+import asyncio
+import random
+from datetime import datetime, timezone, timedelta
+import time
+import requests
+import json
+from urllib.parse import urlparse  # emoji
 
 intents=discord.Intents.all()
 intents.message_content = True
