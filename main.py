@@ -43,7 +43,7 @@ async def member_count(message):
     # ユーザとBOTを区別しない場合
     member_count = guild.member_count
     await message.response.send_message(f'今の人数は{member_count}です')
-@tree.command(name='BotBoot', description='botを起動します') 
+@tree.command(name='boot', description='botを起動します') 
 async def bot_boot(message):
     url = "https://shissou-bot.onrender.com/"
     try:
