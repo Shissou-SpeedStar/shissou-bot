@@ -3,9 +3,6 @@ import os
 from keep_alive import keep_alive
 from discord import app_commands
 from discord.ext import commands, tasks
-import weather
-import BombGame
-import topic
 import re
 import asyncio
 import random
