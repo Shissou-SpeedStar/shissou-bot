@@ -34,6 +34,11 @@ async def on_guild_join(guild):
 @client.event
 async def on_ready():
     print('ログインしました')
+    # アクティビティを設定
+    activity = discord.Activity(name='疾風スピードスター', type=discord.ActivityType.competing)
+    await client.change_presence(status=discord.Status.online, activity=activity)
+    # スラッシュコマンドを同期
+    await tree.sync()
 
 #スラッシュコマンド
 @tree.command(name='membercount', description='サーバーの人数を表示します') 
