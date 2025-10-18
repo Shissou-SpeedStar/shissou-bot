@@ -20,6 +20,7 @@ tree = app_commands.CommandTree(client)
 
 WAKE_URL = "https://shippuu-bot.onrender.com/"  # RenderのURL
 ALLOWED_GUILD_IDS = {1235503983179730944,1268381411904323655,1268199427865055345,1314588938358226986}  # ✅ Botが所属できるサーバーIDをここに記入（複数対応可）
+BOT_ID = 282859044593598464  # ProbotのユーザーID
 # 日本時間（JST）
 JST = timezone(timedelta(hours=9))
 
@@ -55,26 +56,33 @@ async def member_count(message):
 @tree.command(name="boot", description="メインBotを起動します")
 async def wake_bot(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(WAKE_URL) as resp:
-                if resp.status == 200:
-                    await interaction.followup.send("✅ 疾風を起動しました！")
-                else:
-                    await interaction.followup.send(f"⚠️ ステータスコード: {resp.status}")
-        except Exception as e:
-            await interaction.followup.send(f"❌ エラーが発生しました: {e}")
+    shippuu-bot = guild.get_member(BOT_ID)  # botのステータスを取得
+    if shippuu-bot is None or probot.status == discord.Status.offline:
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.get(WAKE_URL) as resp:
+                    if resp.status == 200:
+                        await interaction.followup.send("✅ 疾風を起動しました！")
+                    else:
+                        await interaction.followup.send(f"⚠️ ステータスコード: {resp.status}")
+            except Exception as e:
+                await interaction.followup.send(f"❌ エラーが発生しました: {e}")
 
 async def ping_render():
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(WAKE_URL) as resp:
-                if resp.status == 200:
-                    return "✅ BotBを起動しました！（HTTP 200）"
-                else:
-                    return f"⚠️ ステータスコード: {resp.status}"
-        except Exception as e:
-            return f"❌ エラーが発生しました: {e}"
+    shippuu-bot = guild.get_member(BOT_ID)  # Probotのステータスを取得
+    if shippuu-bot is None or probot.status == discord.Status.offline:
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.get(WAKE_URL) as resp:
+                    if resp.status == 200:
+                        return "✅ 疾風を起動しました！（HTTP 200）"
+                        channel_id = '1428880974820937902'
+                        channel = client.get_channel(channel_id)
+                        await channel.send("✅ 疾風を起動しました！（HTTP 200）")
+                    else:
+                        return f"⚠️ ステータスコード: {resp.status}"
+            except Exception as e:
+                return f"❌ エラーが発生しました: {e}"
 # --- ⏰ 自動で1時間おきに起動する処理 ---
 @tasks.loop(hours=1)
 async def auto_wake():
