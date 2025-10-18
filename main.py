@@ -61,11 +61,13 @@ async def wake_bot(interaction: discord.Interaction):
         try:
             async with session.get(WAKE_URL) as resp:
                 if resp.status == 200:
-                    channel_id = '1428880974820937902'
-                    channel = client.get_channel(channel_id)
                     await interaction.followup.send("✅ 疾風を起動しました！（HTTP 200）")
+                    
                 else:
                     await interaction.followup.send(f"⚠️ ステータスコード: {resp.status}")
+                channel_id = '1428880974820937902'
+                channel = client.get_channel(channel_id)
+                await channel.send(f"再起動コマンド実行：{resp.status}")
         except Exception as e:
             await interaction.followup.send(f"❌ エラーが発生しました: {e}")
              
