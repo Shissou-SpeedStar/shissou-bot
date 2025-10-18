@@ -49,7 +49,7 @@ async def member_count(message):
     # ユーザとBOTを区別しない場合
     member_count = guild.member_count
     await message.response.send_message(f'今の人数は{member_count}です')
-@bot.tree.command(name="boot", description="メインBotを起動します")
+@tree.command(name="boot", description="メインBotを起動します")
 async def wake_bot(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
     async with aiohttp.ClientSession() as session:
