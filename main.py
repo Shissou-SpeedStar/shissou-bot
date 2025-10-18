@@ -19,7 +19,7 @@ client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
 WAKE_URL = "https://shippuu-bot.onrender.com/"  # RenderのURL
-ALLOWED_GUILD_IDS = {1235503983179730944,1268381411904323655,1268199427865055345}  # ✅ Botが所属できるサーバーIDをここに記入（複数対応可）
+ALLOWED_GUILD_IDS = {1235503983179730944,1268381411904323655,1268199427865055345,1314588938358226986}  # ✅ Botが所属できるサーバーIDをここに記入（複数対応可）
 # 日本時間（JST）
 JST = timezone(timedelta(hours=9))
 
@@ -41,6 +41,8 @@ async def on_ready():
     await client.change_presence(status=discord.Status.online, activity=activity)
     # スラッシュコマンドを同期
     await tree.sync()
+    if not auto_wake.is_running():
+        auto_wake.start()  # 自動起動タスクを開始
 
 #スラッシュコマンド
 @tree.command(name='membercount', description='サーバーの人数を表示します') 
@@ -57,12 +59,28 @@ async def wake_bot(interaction: discord.Interaction):
         try:
             async with session.get(WAKE_URL) as resp:
                 if resp.status == 200:
-                    await interaction.followup.send("✅ BotBを起動しました！")
+                    await interaction.followup.send("✅ 疾風を起動しました！")
                 else:
                     await interaction.followup.send(f"⚠️ ステータスコード: {resp.status}")
         except Exception as e:
             await interaction.followup.send(f"❌ エラーが発生しました: {e}")
 
+async def ping_render():
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(WAKE_URL) as resp:
+                if resp.status == 200:
+                    return "✅ BotBを起動しました！（HTTP 200）"
+                else:
+                    return f"⚠️ ステータスコード: {resp.status}"
+        except Exception as e:
+            return f"❌ エラーが発生しました: {e}"
+# --- ⏰ 自動で1時間おきに起動する処理 ---
+@tasks.loop(hours=1)
+async def auto_wake():
+    print("⏰ 自動起動タスク実行中...")
+    result = await ping_render()
+    print(result)
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 # Web サーバの立ち上げ
