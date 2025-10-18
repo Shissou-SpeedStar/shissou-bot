@@ -10,6 +10,7 @@ import time
 import requests
 import json
 from urllib.parse import urlparse  # emoji
+import aiohttp
 
 intents=discord.Intents.all()
 intents.message_content = True
