@@ -17,6 +17,7 @@ intents.members = True  # メンバー参加イベントを取得するために
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
+WAKE_URL = "https://shippuu-bot.onrender.com/"  # RenderのURL
 ALLOWED_GUILD_IDS = {1235503983179730944,1268381411904323655,1268199427865055345}  # ✅ Botが所属できるサーバーIDをここに記入（複数対応可）
 # 日本時間（JST）
 JST = timezone(timedelta(hours=9))
@@ -48,19 +49,19 @@ async def member_count(message):
     # ユーザとBOTを区別しない場合
     member_count = guild.member_count
     await message.response.send_message(f'今の人数は{member_count}です')
-@tree.command(name='boot', description='botを起動します') 
-async def bot_boot(message):
-    url = "https://shissou-bot.onrender.com/"
-    try:
-        response = requests.get(url)
-        await message.response.send_message("起動完了")
-    except requests.exceptions.RequestException as e:
-        await message.response.send_message("エラーが発生しました:", e)
+@bot.tree.command(name="boot", description="メインBotを起動します")
+async def wake_bot(interaction: discord.Interaction):
+    await interaction.response.defer(thinking=True)
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(WAKE_URL) as resp:
+                if resp.status == 200:
+                    await interaction.followup.send("✅ BotBを起動しました！")
+                else:
+                    await interaction.followup.send(f"⚠️ ステータスコード: {resp.status}")
+        except Exception as e:
+            await interaction.followup.send(f"❌ エラーが発生しました: {e}")
 
-@client.event
-async def on_message(message):
-    emoji ="👍"
-    await message.add_reaction(emoji)
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 # Web サーバの立ち上げ
