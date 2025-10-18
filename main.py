@@ -57,27 +57,34 @@ async def member_count(message):
 @tree.command(name="boot", description="メインBotを起動します")
 async def wake_bot(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
-    await ping_render()
-
-async def ping_render():
-     async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession() as session:
         try:
             async with session.get(WAKE_URL) as resp:
                 if resp.status == 200:
-                    return "✅ 疾風を起動しました！（HTTP 200）"
                     channel_id = '1428880974820937902'
                     channel = client.get_channel(channel_id)
-                    await channel.send("✅ 疾風を起動しました！（HTTP 200）")
+                    await interaction.followup.send("✅ 疾風を起動しました！（HTTP 200）")
                 else:
-                     return f"⚠️ ステータスコード: {resp.status}"
+                    await interaction.followup.send(f"⚠️ ステータスコード: {resp.status}")
         except Exception as e:
-            return f"❌ エラーが発生しました: {e}"
-                
+            await interaction.followup.send(f"❌ エラーが発生しました: {e}")
+             
 # 1時間ごとの自動チェック
 @tasks.loop(hours=1)
 async def auto_wake():
     print("⏰ 自動チェック開始")
-    result = await ping_render()
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(WAKE_URL) as resp:
+                if resp.status == 200:
+                    channel_id = '1428880974820937902'
+                    channel = client.get_channel(channel_id)
+                    await channel.send("✅ 疾風を起動しました！（HTTP 200）")
+                    return "✅ 疾風を起動しました！（HTTP 200）"
+                else:
+                     return f"⚠️ ステータスコード: {resp.status}"
+        except Exception as e:
+            return f"❌ エラーが発生しました: {e}"
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 # Web サーバの立ち上げ
