@@ -19,6 +19,7 @@ client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
 WAKE_URL = "https://shippuu-bot.onrender.com/"  # RenderのURL
+BOOT_LOG_CHANNEL = 1428880974820937902
 ALLOWED_GUILD_IDS = {1235503983179730944,1268381411904323655,1268199427865055345,1314588938358226986}  # ✅ Botが所属できるサーバーIDをここに記入（複数対応可）
 BOT_ID = 1347068262969774110  # botのユーザーID
 # 日本時間（JST）
@@ -65,8 +66,7 @@ async def wake_bot(interaction: discord.Interaction):
                     
                 else:
                     await interaction.followup.send(f"⚠️ ステータスコード: {resp.status}")
-                channel_id = '1428880974820937902'
-                channel = client.get_channel(channel_id)
+                channel = client.get_channel(BOOT_LOG_CHANNEL)
                 await channel.send(f"再起動コマンド実行：{resp.status}")
         except Exception as e:
             await interaction.followup.send(f"❌ エラーが発生しました: {e}")
@@ -79,8 +79,7 @@ async def auto_wake():
         try:
             async with session.get(WAKE_URL) as resp:
                 if resp.status == 200:
-                    channel_id = '1428880974820937902'
-                    channel = client.get_channel(channel_id)
+                    channel = client.get_channel(BOOT_LOG_CHANNEL)
                     await channel.send("✅ 疾風を起動しました！（HTTP 200）")
                     return "✅ 疾風を起動しました！（HTTP 200）"
                 else:
