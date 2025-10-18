@@ -93,8 +93,8 @@ async def check_bot_status() -> str:
 
 async def ping_render():
     guild = member.guild
-    shippuu-bot = guild.get_member(BOT_ID)  # Probotのステータスを取得
-    if shippuu-bot is None or shippuu-bot.status == discord.Status.offline:
+    shippuu_bot = guild.get_member(BOT_ID)  # Probotのステータスを取得
+    if shippuu_bot is None or shippuu_bot.status == discord.Status.offline:
         async with aiohttp.ClientSession() as session:
             try:
                 async with session.get(WAKE_URL) as resp:
