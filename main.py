@@ -55,29 +55,41 @@ async def member_count(message):
     member_count = guild.member_count
     await message.response.send_message(f'今の人数は{member_count}です')
 
+PING_URL = "https://shippuu-bot.onrender.com/ping"  # 新しいping用エンドポイント
 @tree.command(name="stats", description="疾風Botの稼働状態を確認します")
 async def stats(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
-    start_time = time.monotonic()  # 応答速度測定開始
+    start_time = time.monotonic()
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(WAKE_URL, timeout=5) as resp:
+            async with session.get(PING_URL, timeout=5) as resp:
                 end_time = time.monotonic()
                 ping_ms = round((end_time - start_time) * 1000, 2)
-                # Embedを作成
-                embed = discord.Embed(
-                    title="📊 疾風Bot ステータスレポート",
-                    color=discord.Color.green() if resp.status == 200 else discord.Color.orange()
-                )
-                embed.add_field(name="🌐 状態", value="🟢 オンライン" if resp.status == 200 else "⚠️ 応答異常", inline=True)
-                embed.add_field(name="📡 応答速度", value=f"`{ping_ms} ms`", inline=True)
-                embed.add_field(name="🔢 ステータスコード", value=f"`{resp.status}`", inline=True)
-                embed.set_footer(text=f"最終チェック: {datetime.now(JST).strftime('%Y/%m/%d %H:%M:%S')} (JST)")
-                await interaction.followup.send(embed=embed)
+                # ステータスチェック
+                if resp.status == 200:
+                    data = await resp.json()
+                    status_text = data.get("status", "unknown")
+
+                    embed = discord.Embed(
+                        title="📊 疾風Bot ステータスレポート",
+                        color=discord.Color.green()
+                    )
+                    embed.add_field(name="🌐 状態", value=f"🟢 {status_text.capitalize()}", inline=True)
+                    embed.add_field(name="📡 応答速度", value=f"`{ping_ms} ms`", inline=True)
+                    embed.add_field(name="🔢 ステータスコード", value=f"`{resp.status}`", inline=True)
+                    embed.set_footer(text=f"最終チェック: {datetime.now(JST).strftime('%Y/%m/%d %H:%M:%S')} (JST)")
+                    await interaction.followup.send(embed=embed)
+                else:
+                    embed = discord.Embed(
+                        title="📊 疾風Bot ステータスレポート",
+                        description=f"⚠️ 疾風Botが応答しましたが異常があります。\nHTTPコード: `{resp.status}`",
+                        color=discord.Color.orange()
+                    )
+                    await interaction.followup.send(embed=embed)
     except asyncio.TimeoutError:
         embed = discord.Embed(
             title="📊 疾風Bot ステータスレポート",
-            description="🔴 疾風Botはオフラインか、応答がありません。（タイムアウト）",
+            description="🔴 疾風Botはオフライン、またはスリープ状態です（タイムアウト）。",
             color=discord.Color.red()
         )
         embed.set_footer(text=f"最終チェック: {datetime.now(JST).strftime('%Y/%m/%d %H:%M:%S')} (JST)")
@@ -85,7 +97,7 @@ async def stats(interaction: discord.Interaction):
     except Exception as e:
         embed = discord.Embed(
             title="📊 疾風Bot ステータスレポート",
-            description=f"❌ エラーが発生しました:\n```{e}```",
+            description=f"❌ 予期せぬエラーが発生しました:\n```{e}```",
             color=discord.Color.dark_red()
         )
         embed.set_footer(text=f"最終チェック: {datetime.now(JST).strftime('%Y/%m/%d %H:%M:%S')} (JST)")
