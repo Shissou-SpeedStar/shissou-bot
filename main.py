@@ -128,7 +128,7 @@ async def auto_wake():
     async with aiohttp.ClientSession() as session:
         try:
             # --- ① まず /ping にアクセスしてオンライン確認 ---
-            async with session.get(PING_URL, timeout=5) as resp:
+            async with session.get(PING_URL, timeout=10) as resp:
                 if resp.status == 200:
                     return  # 起動不要なので終了
         except asyncio.TimeoutError:
@@ -137,7 +137,7 @@ async def auto_wake():
             print(f"⚠️ /ping 接続エラー: {e}")
         # --- ② /ping に失敗したら / へアクセスして起動 ---
         try:
-            async with session.get(WAKE_URL, timeout=10) as wake_resp:
+            async with session.get(WAKE_URL) as wake_resp:
                 channel = client.get_channel(BOOT_LOG_CHANNEL)
                 if wake_resp.status == 200:
                     await channel.send("✅ 疾風Botを再起動しました！")
