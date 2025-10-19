@@ -48,6 +48,7 @@ async def on_ready():
 
 #スラッシュコマンド
 @tree.command(name='membercount', description='サーバーの人数を表示します') 
+@app_commands.default_permissions(administrator=True)
 async def member_count(message):
     # message インスタンスから guild インスタンスを取得
     guild = message.guild 
@@ -57,6 +58,7 @@ async def member_count(message):
 
 PING_URL = "https://shippuu-bot.onrender.com/ping"  # 新しいping用エンドポイント
 @tree.command(name="stats", description="疾風Botの稼働状態を確認します")
+@app_commands.default_permissions(administrator=True)
 async def stats(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
     start_time = time.monotonic()
@@ -104,6 +106,7 @@ async def stats(interaction: discord.Interaction):
         await interaction.followup.send(embed=embed)
     
 @tree.command(name="boot", description="メインBotを起動します")
+@app_commands.default_permissions(administrator=True)
 async def wake_bot(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
     async with aiohttp.ClientSession() as session:
