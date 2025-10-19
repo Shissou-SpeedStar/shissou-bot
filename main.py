@@ -54,6 +54,35 @@ async def member_count(message):
     # ユーザとBOTを区別しない場合
     member_count = guild.member_count
     await message.response.send_message(f'今の人数は{member_count}です')
+
+@tree.command(name="stats", description="疾風Botの稼働状態を確認します")
+async def stats(interaction: discord.Interaction):
+    await interaction.response.defer(thinking=True)
+
+    start_time = time.monotonic()  # 応答速度測定開始
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(WAKE_URL, timeout=5) as resp:
+                end_time = time.monotonic()  # 応答速度測定終了
+                ping_ms = round((end_time - start_time) * 1000, 2)
+
+                # HTTPステータスで状態を判定
+                if resp.status == 200:
+                    await interaction.followup.send(
+                        f"🟢 **疾風Botはオンラインです！**\n"
+                        f"📡 応答速度: `{ping_ms} ms`\n"
+                        f"🌐 ステータスコード: `{resp.status}`"
+                    )
+                else:
+                    await interaction.followup.send(
+                        f"⚠️ **疾風Botにアクセスできましたが異常があります。**\n"
+                        f"📡 応答速度: `{ping_ms} ms`\n"
+                        f"🌐 ステータスコード: `{resp.status}`"
+                    )
+    except asyncio.TimeoutError:
+        await interaction.followup.send("🔴 疾風Botはオフラインか、応答がありません。（タイムアウト）")
+    except Exception as e:
+        await interaction.followup.send(f"❌ エラーが発生しました: {e}")
     
 @tree.command(name="boot", description="メインBotを起動します")
 async def wake_bot(interaction: discord.Interaction):
