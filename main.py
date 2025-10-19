@@ -125,18 +125,27 @@ async def wake_bot(interaction: discord.Interaction):
 # 1時間ごとの自動チェック
 @tasks.loop(hours=1)
 async def auto_wake():
-    print("⏰ 自動チェック開始")
     async with aiohttp.ClientSession() as session:
         try:
-            async with session.get(WAKE_URL) as resp:
+            # --- ① まず /ping にアクセスしてオンライン確認 ---
+            async with session.get(PING_URL, timeout=5) as resp:
                 if resp.status == 200:
-                    channel = client.get_channel(BOOT_LOG_CHANNEL)
-                    await channel.send("✅ 疾風を起動しました！（HTTP 200）")
-                    return "✅ 疾風を起動しました！（HTTP 200）"
-                else:
-                     return f"⚠️ ステータスコード: {resp.status}"
+                    return  # 起動不要なので終了
+        except asyncio.TimeoutError:
+            print("🕓 タイムアウト: サーバーはスリープ中の可能性あり。")
         except Exception as e:
-            return f"❌ エラーが発生しました: {e}"
+            print(f"⚠️ /ping 接続エラー: {e}")
+        # --- ② /ping に失敗したら / へアクセスして起動 ---
+        try:
+            async with session.get(WAKE_URL, timeout=10) as wake_resp:
+                channel = client.get_channel(BOOT_LOG_CHANNEL)
+                if wake_resp.status == 200:
+                    await channel.send("✅ 疾風Botを再起動しました！")
+                else:
+                    await channel.send(f"⚠️ 起動リクエストを送信しました。応答コード: {wake_resp.status}")
+        except Exception as e:
+            channel = client.get_channel(BOOT_LOG_CHANNEL)
+            await channel.send(f"❌ 起動リクエスト中にエラーが発生しました: {e}")
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 # Web サーバの立ち上げ
