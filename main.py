@@ -105,22 +105,40 @@ async def stats(interaction: discord.Interaction):
         embed.set_footer(text=f"最終チェック: {datetime.now(JST).strftime('%Y/%m/%d %H:%M:%S')} (JST)")
         await interaction.followup.send(embed=embed)
     
-@tree.command(name="boot", description="メインBotを起動します")
+@tree.command(name="boot", description="疾風Botサーバーを起動します")
 @app_commands.default_permissions(administrator=True)
-async def wake_bot(interaction: discord.Interaction):
+async def boot(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
+    MAX_WAIT_TIME = 120  # 最大待機時間（秒）
+    RETRY_INTERVAL = 10  # 再試行間隔（秒）
     async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(WAKE_URL) as resp:
-                if resp.status == 200:
-                    await interaction.followup.send("✅ 疾風を起動しました！（HTTP 200）")
-                    
-                else:
-                    await interaction.followup.send(f"⚠️ ステータスコード: {resp.status}")
-                channel = client.get_channel(BOOT_LOG_CHANNEL)
-                await channel.send(f"再起動コマンド実行：{resp.status}")
-        except Exception as e:
-            await interaction.followup.send(f"❌ エラーが発生しました: {e}")
+        start_time = time.monotonic()
+        elapsed = 0
+        await interaction.followup.send("⚙️ 疾風Botのサーバーを起動中です。少々お待ちください...", ephemeral=True)
+        while elapsed < MAX_WAIT_TIME:
+            try:
+                async with session.get(WAKE_URL, timeout=10) as resp:
+                    if resp.status == 200:
+                        end_time = time.monotonic()
+                        boot_time = round(end_time - start_time, 1)
+                        await interaction.followup.send(
+                            f"✅ 疾風Botがオンラインになりました！（起動時間: `{boot_time} 秒`）"
+                        )
+                        return
+                    elif resp.status in (429, 502, 503):
+                        print(f"⚠️ 起動待機中... ステータス: {resp.status}")
+                        await asyncio.sleep(RETRY_INTERVAL)
+                    else:
+                        await interaction.followup.send(f"⚠️ 予期しない応答: HTTP {resp.status}")
+                        return
+            except asyncio.TimeoutError:
+                print("⏳ タイムアウト。再試行します。")
+                await asyncio.sleep(RETRY_INTERVAL)
+            except Exception as e:
+                await interaction.followup.send(f"❌ エラーが発生しました: {e}")
+                return
+            elapsed = time.monotonic() - start_time
+        await interaction.followup.send("⏰ 起動待機時間がタイムアウトしました（2分経過しても起動しませんでした）。")
              
 # 1時間ごとの自動チェック
 @tasks.loop(hours=1)
