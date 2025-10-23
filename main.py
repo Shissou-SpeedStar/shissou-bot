@@ -15,24 +15,26 @@ client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
 # --- 設定 ---
-WAKE_URL = "https://shippuu-bot.onrender.com/"
-PING_URL = "https://shippuu-bot.onrender.com/ping"
-BOOT_LOG_CHANNEL = 1428880974820937902
 ALLOWED_GUILD_IDS = {1235503983179730944,1268381411904323655,1268199427865055345,1314588938358226986}
 BOT_ID = 1347068262969774110
 JST = timezone(timedelta(hours=9))
 
-# --- User-Agent を設定 ---
+# 設定
+SERVICE_ID = os.getenv("RENDER_SERVICE_ID")
+API_KEY = os.getenv("RENDER_API_KEY")
+WAKE_URL = "https://shippuu-bot.onrender.com/"
+PING_URL = "https://shippuu-bot.onrender.com/ping"
+BOOT_LOG_CHANNEL = 1428880974820937902  # チャンネルIDを整数で
+# ヘッダー
 HEADERS = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/125.0.0.0 Safari/537.36"
-        ),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
-        "Connection": "keep-alive",
-    }
+    "Authorization": f"Bearer {API_KEY}",
+    "Accept": "application/json",
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/119.0.0.0 Safari/537.36"
+    )
+}
 
 # --- イベント ---
 @client.event
@@ -113,34 +115,59 @@ async def stats(interaction: discord.Interaction):
 @app_commands.default_permissions(administrator=True)
 async def boot(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
-    MAX_WAIT_TIME = 120
-    RETRY_INTERVAL = 10
-    async with aiohttp.ClientSession(headers=HEADERS) as session:
+    if not SERVICE_ID or not API_KEY:
+        await interaction.followup.send("❌ 環境変数 `RENDER_SERVICE_ID` または `RENDER_API_KEY` が設定されていません。")
+        return
+    async with aiohttp.ClientSession() as session:
+        # ① 起動要求（Render API resume）
+        resume_url = f"https://api.render.com/v1/services/{SERVICE_ID}/resume"
+        try:
+            async with session.post(resume_url, headers=HEADERS, timeout=10) as resp:
+                text = await resp.text()
+                await interaction.followup.send(f"⚙️ 起動リクエスト送信: HTTP {resp.status}\n```\n{text}\n```")
+                if resp.status not in (200, 202):
+                    await interaction.followup.send("❌ 起動リクエストが期待どおりの応答ではありませんでした。")
+                    return
+        except Exception as e:
+            await interaction.followup.send(f"❌ 起動リクエストに失敗しました: {e}")
+            return
+        # ② 起動完了まで待機（ポーリング）
+        await interaction.followup.send("⌛ 起動を確認中…（最大 5 分待機）")
+        MAX_WAIT_TIME = 300  # 秒
+        CHECK_INTERVAL = 15  # 秒
         start_time = time.monotonic()
         elapsed = 0
-        await interaction.followup.send("⚙️ サーバーを起動中です。少々お待ちください...", ephemeral=True)
         while elapsed < MAX_WAIT_TIME:
-            try:
-                async with session.get(WAKE_URL, timeout=10) as resp:
-                    if resp.status == 200:
-                        end_time = time.monotonic()
-                        boot_time = round(end_time - start_time, 1)
-                        await interaction.followup.send(f"✅ 起動完了！（{boot_time} 秒）")
-                        return
-                    elif resp.status in (429, 502, 503):
-                        print(f"⚠️ 起動待機中... ステータス: {resp.status}")
-                        await asyncio.sleep(RETRY_INTERVAL)
-                    else:
-                        await interaction.followup.send(f"⚠️ 予期しない応答: HTTP {resp.status}")
-                        return
-            except asyncio.TimeoutError:
-                print("⏳ タイムアウト。再試行します。")
-                await asyncio.sleep(RETRY_INTERVAL)
-            except Exception as e:
-                await interaction.followup.send(f"❌ エラー: {e}")
-                return
+            await asyncio.sleep(CHECK_INTERVAL)
             elapsed = time.monotonic() - start_time
-        await interaction.followup.send("⏰ 起動待機時間がタイムアウトしました。")
+            try:
+                async with session.get(PING_URL, timeout=5, headers={"User-Agent": HEADERS["User-Agent"]}) as ping_resp:
+                    if ping_resp.status == 200:
+                        data = await ping_resp.json()
+                        status_text = data.get("status", "unknown")
+                        boot_time = round(elapsed, 1)
+                        embed = discord.Embed(
+                            title="✅ 疾風Bot 起動確認完了",
+                            description=f"状態：**{status_text}**\n起動時間：約 `{boot_time} 秒`",
+                            color=discord.Color.green()
+                        )
+                        embed.set_footer(text=f"最終確認：{datetime.now(JST).strftime('%Y/%m/%d %H:%M:%S')} JST")
+                        await interaction.followup.send(embed=embed)
+                        return
+                    else:
+                        # 起動途中など
+                        print(f"🔄 起動待機中… HTTP {ping_resp.status} (経過 {int(elapsed)} 秒)")
+            except Exception as e:
+                print(f"🔄 起動確認エラー：{e} (経過 {int(elapsed)} 秒)")
+        # ③ タイムアウトの場合
+        embed = discord.Embed(
+            title="❌ 起動確認タイムアウト",
+            description=f"最大待機時間 {MAX_WAIT_TIME} 秒を超えました。\nRender サービスがまだ起動準備中の可能性があります。",
+            color=discord.Color.red()
+        )
+        embed.set_footer(text=f"最終確認：{datetime.now(JST).strftime('%Y/%m/%d %H:%M:%S')} JST")
+        await interaction.followup.send(embed=embed)
+
 
 # --- 自動起動チェック ---
 @tasks.loop(hours=1)
