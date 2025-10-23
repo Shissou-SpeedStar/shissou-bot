@@ -111,7 +111,7 @@ async def stats(interaction: discord.Interaction):
         await interaction.followup.send(embed=embed)
 
 # --- /boot コマンド ---
-@bot.tree.command(name="boot", description="疾風Botサーバーを起動します")
+@tree.command(name="boot", description="疾風Botサーバーを起動します")
 @app_commands.default_permissions(administrator=True)
 async def boot(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
