@@ -22,7 +22,7 @@ JST = timezone(timedelta(hours=9))
 # 設定
 SERVICE_ID = os.getenv("RENDER_SERVICE_ID")
 API_KEY = os.getenv("RENDER_API_KEY")
-WAKE_URL = "https://shippuu-bot.onrender.com/"
+WAKE_URL = "https://shippuu-bot.onrender.com/resume"  # 疾風ボットのresumeエンドポイント
 PING_URL = "https://shippuu-bot.onrender.com/ping"
 BOOT_LOG_CHANNEL = 1428880974820937902  # チャンネルIDを整数で
 # ヘッダー
@@ -110,28 +110,26 @@ async def stats(interaction: discord.Interaction):
         )
         await interaction.followup.send(embed=embed)
 
-# --- コマンド: 起動 ---
-@tree.command(name="boot", description="疾風Botサーバーを起動します")
+# --- /boot コマンド ---
+@bot.tree.command(name="boot", description="疾風Botサーバーを起動します")
 @app_commands.default_permissions(administrator=True)
 async def boot(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
-    if not SERVICE_ID or not API_KEY:
-        await interaction.followup.send("❌ 環境変数 `RENDER_SERVICE_ID` または `RENDER_API_KEY` が設定されていません。")
-        return
     async with aiohttp.ClientSession() as session:
-        # ① 起動要求（Render API resume）
-        resume_url = f"https://api.render.com/v1/services/{SERVICE_ID}/resume"
+        # ① 起動リクエスト送信
         try:
-            async with session.post(resume_url, headers=HEADERS, timeout=10) as resp:
+            async with session.post(WAKE_URL, timeout=10) as resp:
                 text = await resp.text()
-                await interaction.followup.send(f"⚙️ 起動リクエスト送信: HTTP {resp.status}\n```\n{text}\n```")
+                await interaction.followup.send(
+                    f"⚙️ 起動リクエスト送信: HTTP {resp.status}\n```\n{text}\n```"
+                )
                 if resp.status not in (200, 202):
                     await interaction.followup.send("❌ 起動リクエストが期待どおりの応答ではありませんでした。")
                     return
         except Exception as e:
             await interaction.followup.send(f"❌ 起動リクエストに失敗しました: {e}")
             return
-        # ② 起動完了まで待機（ポーリング）
+        # ② 起動完了まで待機
         await interaction.followup.send("⌛ 起動を確認中…（最大 5 分待機）")
         MAX_WAIT_TIME = 300  # 秒
         CHECK_INTERVAL = 15  # 秒
@@ -141,7 +139,7 @@ async def boot(interaction: discord.Interaction):
             await asyncio.sleep(CHECK_INTERVAL)
             elapsed = time.monotonic() - start_time
             try:
-                async with session.get(PING_URL, timeout=5, headers={"User-Agent": HEADERS["User-Agent"]}) as ping_resp:
+                async with session.get(PING_URL, timeout=5) as ping_resp:
                     if ping_resp.status == 200:
                         data = await ping_resp.json()
                         status_text = data.get("status", "unknown")
@@ -149,23 +147,26 @@ async def boot(interaction: discord.Interaction):
                         embed = discord.Embed(
                             title="✅ 疾風Bot 起動確認完了",
                             description=f"状態：**{status_text}**\n起動時間：約 `{boot_time} 秒`",
-                            color=discord.Color.green()
+                            color=discord.Color.green(),
                         )
-                        embed.set_footer(text=f"最終確認：{datetime.now(JST).strftime('%Y/%m/%d %H:%M:%S')} JST")
+                        embed.set_footer(
+                            text=f"最終確認：{datetime.now(JST).strftime('%Y/%m/%d %H:%M:%S')} JST"
+                        )
                         await interaction.followup.send(embed=embed)
                         return
                     else:
-                        # 起動途中など
                         print(f"🔄 起動待機中… HTTP {ping_resp.status} (経過 {int(elapsed)} 秒)")
             except Exception as e:
                 print(f"🔄 起動確認エラー：{e} (経過 {int(elapsed)} 秒)")
-        # ③ タイムアウトの場合
+        # ③ タイムアウト
         embed = discord.Embed(
             title="❌ 起動確認タイムアウト",
-            description=f"最大待機時間 {MAX_WAIT_TIME} 秒を超えました。\nRender サービスがまだ起動準備中の可能性があります。",
-            color=discord.Color.red()
+            description=f"最大待機時間 {MAX_WAIT_TIME} 秒を超えました。\n疾風Botがまだ起動準備中の可能性があります。",
+            color=discord.Color.red(),
         )
-        embed.set_footer(text=f"最終確認：{datetime.now(JST).strftime('%Y/%m/%d %H:%M:%S')} JST")
+        embed.set_footer(
+            text=f"最終確認：{datetime.now(JST).strftime('%Y/%m/%d %H:%M:%S')} JST"
+        )
         await interaction.followup.send(embed=embed)
 
 
